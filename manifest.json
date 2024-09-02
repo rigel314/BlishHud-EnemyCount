@@ -1,0 +1,18 @@
+{
+  "name": "EnemyCount",
+  "version": "0.1.0",
+  "namespace": "io.arcsin.EnemyCount",
+  "package": "EnemyCount.dll",
+  "manifest_version": 1,
+
+  "description": "Shows enemy count and enemy class breakdown in WvW",
+  "dependencies": {
+    "bh.blishhud": ">=1.1.1"
+  },
+  "url": "https://github.com/rigel314/Blish-EnemyCount",
+  "contributors": [
+    {
+      "name": "rigel314"
+    }
+  ]
+}
