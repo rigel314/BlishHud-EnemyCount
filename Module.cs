@@ -1,14 +1,21 @@
 ﻿using Blish_HUD;
 using Blish_HUD.ArcDps;
 using Blish_HUD.ArcDps.Models;
+using Blish_HUD.Content;
+using Blish_HUD.Controls;
 using Blish_HUD.Modules;
 using Blish_HUD.Modules.Managers;
+using Blish_HUD.Overlay.UI.Views;
 using Blish_HUD.Settings;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EnemyCount
@@ -40,6 +47,12 @@ namespace EnemyCount
         private ConcurrentDictionary<DateTime, Session> Sessions;
         private ulong activeSessionID;
         private Dictionary<ulong, Ag> active = new Dictionary<ulong, Ag>();
+        private Mutex activeLock = new Mutex();
+        private Dictionary<ulong, Ag> display = new Dictionary<ulong, Ag>();
+
+        CountWindow.CountContainer cc;
+
+        bool shown = false;
 
         #region Service Managers
         internal SettingsManager SettingsManager => this.ModuleParameters.SettingsManager;
@@ -84,7 +97,8 @@ namespace EnemyCount
             //    active = new Dictionary<ulong, Ag>();
             //}
 
-            if (args.CombatEvent.Src != null)
+            activeLock.WaitOne();
+            if (args.CombatEvent.Src != null && args.CombatEvent.Src.Profession != 0)
             {
                 if (!active.ContainsKey(args.CombatEvent.Src.Id))
                 {
@@ -92,18 +106,21 @@ namespace EnemyCount
                 }
             }
 
-            if (args.CombatEvent.Dst != null)
+            if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Profession != 0)
             {
                 if (!active.ContainsKey(args.CombatEvent.Dst.Id))
                 {
                     active.Add(args.CombatEvent.Dst.Id, args.CombatEvent.Dst);
                 }
             }
+            activeLock.ReleaseMutex();
         }
 
         protected override async Task LoadAsync()
         {
             ArcDpsService.ArcDps.RawCombatEvent += handleArcDpsEvents;
+
+            cc = new CountWindow.CountContainer();
         }
 
         protected override void OnModuleLoaded(EventArgs e)
@@ -114,15 +131,38 @@ namespace EnemyCount
 
         protected override void Update(GameTime gameTime)
         {
+            if (!shown)
+            {
+                cc.Show();
+                shown = true;
+            }
 
+            activeLock.WaitOne();
+            foreach (var value in active.Values)
+            {
+                if (!display.ContainsKey(value.Id))
+                {
+                    var x = value.Name;
+                    if (value.Name == "")
+                    {
+                        x = value.Profession+"-"+value.Id;
+                    }
+                    new Label()
+                    {
+                        Text = x + ":" + value.Team,
+                        AutoSizeWidth = true,
+                        Parent = cc.fp,
+                    };
+                    display.Add(value.Id, value);
+                }
+            }
+            activeLock.ReleaseMutex();
         }
 
         /// <inheritdoc />
         protected override void Unload()
         {
-            // Unload here
-
-            // All static members must be manually unset
+            ArcDpsService.ArcDps.RawCombatEvent -= handleArcDpsEvents;
         }
 
     }
