@@ -59,6 +59,11 @@ namespace EnemyCount.CountWindow
             sw.Show();
         }
 
+        public void Toggle()
+        {
+            sw.ToggleWindow();
+        }
+
         public void Dispose()
         {
             sw?.Dispose();

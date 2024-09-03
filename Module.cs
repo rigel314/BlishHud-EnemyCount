@@ -7,8 +7,11 @@ using Blish_HUD.Modules;
 using Blish_HUD.Modules.Managers;
 using Blish_HUD.Overlay.UI.Views;
 using Blish_HUD.Settings;
+using EnemyCount.arcdps;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using SharpDX.MediaFoundation;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -52,7 +55,10 @@ namespace EnemyCount
 
         CountWindow.CountContainer cc;
 
+        bool reset = false;
+
         bool shown = false;
+        CornerIcon ci;
 
         #region Service Managers
         internal SettingsManager SettingsManager => this.ModuleParameters.SettingsManager;
@@ -91,14 +97,25 @@ namespace EnemyCount
 
         private void handleArcDpsEvents(object sender, RawCombatEventArgs args)
         {
-            //if (args.CombatEvent.Id != activeSessionID)
-            //{
-            //    Console.WriteLine(active);
-            //    active = new Dictionary<ulong, Ag>();
-            //}
+            if (args.CombatEvent.Ev == null)
+            {
+                return;
+            }
+
+            if (args.CombatEvent.Ev.IsStateChange == ArcDpsEnums.StateChange.LogStart)
+            {
+                //Console.WriteLine(active);
+                active = new Dictionary<ulong, Ag>();
+                reset = true;
+            }
+
+            if (args.CombatEvent.Ev.IsStateChange == ArcDpsEnums.StateChange.LogEnd)
+            {
+                // TODO: update the sessions dictionary from the active one
+            }
 
             activeLock.WaitOne();
-            if (args.CombatEvent.Src != null && args.CombatEvent.Src.Profession != 0)
+            if (args.CombatEvent.Src != null && args.CombatEvent.Src.Elite != 0xffffffff)
             {
                 if (!active.ContainsKey(args.CombatEvent.Src.Id))
                 {
@@ -106,7 +123,7 @@ namespace EnemyCount
                 }
             }
 
-            if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Profession != 0)
+            if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Elite != 0xffffffff)
             {
                 if (!active.ContainsKey(args.CombatEvent.Dst.Id))
                 {
@@ -121,6 +138,27 @@ namespace EnemyCount
             ArcDpsService.ArcDps.RawCombatEvent += handleArcDpsEvents;
 
             cc = new CountWindow.CountContainer();
+            new StandardButton()
+            {
+                Text = "Reset",
+                Parent = cc.fp,
+            }.Click += (s, e) =>
+            {
+                reset = true;
+            };
+
+            ci = new CornerIcon()
+            {
+                Icon = ContentService.Content.GetTexture(@"fallback.png"),
+                HoverIcon = ContentService.Content.GetTexture(@"fallback.png"),
+                BasicTooltipText = "Toggle Counts",
+                Priority = 0x7621e8bc,
+                Parent = GameService.Graphics.SpriteScreen,
+            };
+            ci.Click += (s, e) =>
+            {
+                cc.Toggle();
+            };
         }
 
         protected override void OnModuleLoaded(EventArgs e)
@@ -137,19 +175,28 @@ namespace EnemyCount
                 shown = true;
             }
 
+            if (reset)
+            {
+                foreach (var ch in cc.fp.GetChildrenOfType<Label>())
+                {
+                    ch.Parent = null;
+                }
+                reset = false;
+            }
+
             activeLock.WaitOne();
             foreach (var value in active.Values)
             {
                 if (!display.ContainsKey(value.Id))
                 {
-                    var x = value.Name;
-                    if (value.Name == "")
+                    var x = value.Team + ":" + ClassLookup.Table(value.Profession, value.Elite) + "-" + +value.Id;
+                    if (value.Name != "")
                     {
-                        x = value.Profession+"-"+value.Id;
+                        x += " (" + value.Name + ")";
                     }
                     new Label()
                     {
-                        Text = x + ":" + value.Team,
+                        Text = x,
                         AutoSizeWidth = true,
                         Parent = cc.fp,
                     };
@@ -163,6 +210,8 @@ namespace EnemyCount
         protected override void Unload()
         {
             ArcDpsService.ArcDps.RawCombatEvent -= handleArcDpsEvents;
+            ci.Dispose();
+            cc.Dispose();
         }
 
     }

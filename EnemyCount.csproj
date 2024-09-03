@@ -156,6 +156,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="arcdps\ClassLookup.cs" />
     <Compile Include="CountWindow\CountWindow.cs" />
     <Compile Include="Module.cs" />
   </ItemGroup>
