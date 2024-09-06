@@ -17,9 +17,9 @@ namespace EnemyCount.arcdps
                 3 => EngineerLookup(elite),
                 4 => RangerLookup(elite),
                 5 => ThiefLookup(elite),
-                6 => GuardianLookup(elite),
+                6 => ElementalistLookup(elite),
                 7 => MesmerLookup(elite),
-                8 => GuardianLookup(elite),
+                8 => NecromancerLookup(elite),
                 9 => RevenantLookup(elite),
                 _ => "unknown-" + profession + "-" + elite,
             };

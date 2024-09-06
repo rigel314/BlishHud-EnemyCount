@@ -18,6 +18,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -55,10 +56,17 @@ namespace EnemyCount
 
         CountWindow.CountContainer cc;
 
-        bool reset = false;
+        volatile bool reset = false;
+        volatile bool resetDisplay = false;
+        volatile bool logStart = false;
+        volatile bool logEnd = false;
+
+        Label statusLabel;
 
         bool shown = false;
         CornerIcon ci;
+
+        volatile SocketError se = SocketError.Success;
 
         #region Service Managers
         internal SettingsManager SettingsManager => this.ModuleParameters.SettingsManager;
@@ -106,16 +114,18 @@ namespace EnemyCount
             {
                 //Console.WriteLine(active);
                 active = new Dictionary<ulong, Ag>();
-                reset = true;
+                //reset = true;
+                logStart = true;
             }
 
             if (args.CombatEvent.Ev.IsStateChange == ArcDpsEnums.StateChange.LogEnd)
             {
+                logEnd = true;
                 // TODO: update the sessions dictionary from the active one
             }
 
-            activeLock.WaitOne();
-            if (args.CombatEvent.Src != null && args.CombatEvent.Src.Elite != 0xffffffff)
+            //activeLock.WaitOne();
+            if (args.CombatEvent.Src != null && args.CombatEvent.Src.Elite != 0xffffffff && args.CombatEvent.Src.Profession != 0)
             {
                 if (!active.ContainsKey(args.CombatEvent.Src.Id))
                 {
@@ -123,29 +133,42 @@ namespace EnemyCount
                 }
             }
 
-            if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Elite != 0xffffffff)
+            if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Elite != 0xffffffff && args.CombatEvent.Dst.Profession != 0)
             {
                 if (!active.ContainsKey(args.CombatEvent.Dst.Id))
                 {
                     active.Add(args.CombatEvent.Dst.Id, args.CombatEvent.Dst);
                 }
             }
-            activeLock.ReleaseMutex();
+            //activeLock.ReleaseMutex();
+        }
+
+        private void handleArcDpsErrors(object sender, SocketError args)
+        {
+            se = args;
         }
 
         protected override async Task LoadAsync()
         {
             ArcDpsService.ArcDps.RawCombatEvent += handleArcDpsEvents;
+            ArcDpsService.ArcDps.Error += handleArcDpsErrors;
 
             cc = new CountWindow.CountContainer();
             new StandardButton()
             {
                 Text = "Reset",
-                Parent = cc.fp,
+                Parent = cc.fp2,
             }.Click += (s, e) =>
             {
                 reset = true;
             };
+
+            statusLabel = new Label()
+            {
+                AutoSizeWidth = true,
+                Parent = cc.fp2,
+            };
+            //ArcDpsService.ArcDps.HudIsActive
 
             ci = new CornerIcon()
             {
@@ -169,11 +192,7 @@ namespace EnemyCount
 
         protected override void Update(GameTime gameTime)
         {
-            if (!shown)
-            {
-                cc.Show();
-                shown = true;
-            }
+            statusLabel.Text = "adrp:" + ArcDpsService.ArcDps.RenderPresent + ",adr:" + ArcDpsService.ArcDps.Running + ",err:" + se;
 
             if (reset)
             {
@@ -181,35 +200,63 @@ namespace EnemyCount
                 {
                     ch.Parent = null;
                 }
+                display.Clear();
                 reset = false;
             }
 
-            activeLock.WaitOne();
-            foreach (var value in active.Values)
+            if (resetDisplay)
             {
-                if (!display.ContainsKey(value.Id))
-                {
-                    var x = value.Team + ":" + ClassLookup.Table(value.Profession, value.Elite) + "-" + +value.Id;
-                    if (value.Name != "")
-                    {
-                        x += " (" + value.Name + ")";
-                    }
-                    new Label()
-                    {
-                        Text = x,
-                        AutoSizeWidth = true,
-                        Parent = cc.fp,
-                    };
-                    display.Add(value.Id, value);
-                }
+                display.Clear();
             }
-            activeLock.ReleaseMutex();
+
+            if (logStart)
+            {
+                new Label()
+                {
+                    Text = "logStart",
+                    AutoSizeWidth = true,
+                    Parent = cc.fp,
+                };
+                logStart = false;
+            }
+            if (logEnd)
+            {
+                new Label()
+                {
+                    Text = "logEnd",
+                    AutoSizeWidth = true,
+                    Parent = cc.fp,
+                };
+                logEnd = false;
+            }
+
+            //activeLock.WaitOne();
+            //foreach (var value in active.Values)
+            //{
+            //    if (!display.ContainsKey(value.Id))
+            //    {
+            //        var x = value.Team + ":" + ClassLookup.Table(value.Profession, value.Elite) + "-" + +value.Id;
+            //        if (value.Name != "")
+            //        {
+            //            x += " (" + value.Name + ")";
+            //        }
+            //        new Label()
+            //        {
+            //            Text = x,
+            //            AutoSizeWidth = true,
+            //            Parent = cc.fp,
+            //        };
+            //        display.Add(value.Id, value);
+            //    }
+            //}
+            //activeLock.ReleaseMutex();
         }
 
         /// <inheritdoc />
         protected override void Unload()
         {
             ArcDpsService.ArcDps.RawCombatEvent -= handleArcDpsEvents;
+            ArcDpsService.ArcDps.Error -= handleArcDpsErrors;
             ci.Dispose();
             cc.Dispose();
         }

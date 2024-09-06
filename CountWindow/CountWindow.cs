@@ -18,6 +18,7 @@ namespace EnemyCount.CountWindow
         AsyncTexture2D simpleTexture;
         StandardWindow sw;
         public FlowPanel fp;
+        public FlowPanel fp2;
 
         public CountContainer()
         {
@@ -51,6 +52,15 @@ namespace EnemyCount.CountWindow
                 FlowDirection = ControlFlowDirection.SingleTopToBottom,
                 CanScroll = true,
                 Parent = sw,
+            };
+
+            fp2 = new FlowPanel
+            {
+                WidthSizingMode = SizingMode.Fill,
+                HeightSizingMode = SizingMode.AutoSize,
+                FlowDirection = ControlFlowDirection.SingleLeftToRight,
+                CanScroll = false,
+                Parent = fp,
             };
         }
 
