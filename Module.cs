@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -50,10 +51,16 @@ namespace EnemyCount
         }
         private ConcurrentDictionary<DateTime, Session> Sessions;
         private ulong activeSessionID;
-        private Dictionary<ulong, Ag> active = new Dictionary<ulong, Ag>();
+        private Dictionary<string, blar> active = new Dictionary<string, blar>();
         private Mutex activeLock = new Mutex();
-        private Dictionary<ulong, Ag> display = new Dictionary<ulong, Ag>();
-        private ConcurrentDictionary<ulong, Ag> latest = new ConcurrentDictionary<ulong, Ag>();
+        private Dictionary<string, blar> display = new Dictionary<string, blar>();
+        private ConcurrentDictionary<string, blar> latest = new ConcurrentDictionary<string, blar>();
+
+        struct blar
+        {
+            public Ag ag;
+            public Ev ev;
+        }
 
         CountWindow.CountContainer cc;
 
@@ -61,6 +68,8 @@ namespace EnemyCount
         volatile bool resetDisplay = false;
         volatile bool logStart = false;
         volatile bool logEnd = false;
+        volatile bool logEnded = false;
+        int startctr = 0;
 
         Label statusLabel;
 
@@ -113,20 +122,32 @@ namespace EnemyCount
 
             if (args.CombatEvent.Ev.IsStateChange == ArcDpsEnums.StateChange.LogStart)
             {
-                //Console.WriteLine(active);
-                active = new Dictionary<ulong, Ag>();
-                //reset = true;
-                latest.Clear();
-                logStart = true;
+                if (startctr == 0)
+                {
+                    //Console.WriteLine(active);
+                    active = new Dictionary<string, blar>();
+                    //reset = true;
+                    latest.Clear();
+                    logStart = true;
+                }
+                startctr++;
             }
 
             if (args.CombatEvent.Ev.IsStateChange == ArcDpsEnums.StateChange.LogEnd)
             {
-                logEnd = true;
-                //latest = active;
-                resetDisplay = true;
-                foreach (var x in active) {
-                    latest.TryAdd(x.Key,x.Value);
+                if (startctr != 0)
+                {
+                    startctr--;
+                }
+                if (startctr == 0)
+                {
+                    //latest = active;
+                    resetDisplay = true;
+                    foreach (var x in active)
+                    {
+                        latest.TryAdd(x.Key, x.Value);
+                    }
+                    logEnd = true;
                 }
                 // TODO: update the sessions dictionary from the active one
             }
@@ -134,17 +155,19 @@ namespace EnemyCount
             //activeLock.WaitOne();
             if (args.CombatEvent.Src != null && args.CombatEvent.Src.Elite != 0xffffffff && args.CombatEvent.Src.Profession != 0)
             {
-                if (!active.ContainsKey(args.CombatEvent.Src.Id))
+                var key = args.CombatEvent.Src.Team + "." + args.CombatEvent.Ev.SrcInstId;
+                if (!active.ContainsKey(key))
                 {
-                    active.Add(args.CombatEvent.Src.Id, args.CombatEvent.Src);
+                    active.Add(key, new blar() { ag = args.CombatEvent.Src, ev = args.CombatEvent.Ev });
                 }
             }
 
             if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Elite != 0xffffffff && args.CombatEvent.Dst.Profession != 0)
             {
-                if (!active.ContainsKey(args.CombatEvent.Dst.Id))
+                var key = args.CombatEvent.Dst.Team + "." + args.CombatEvent.Ev.DstInstId;
+                if (!active.ContainsKey(key))
                 {
-                    active.Add(args.CombatEvent.Dst.Id, args.CombatEvent.Dst);
+                    active.Add(key, new blar() { ag = args.CombatEvent.Dst, ev = args.CombatEvent.Ev });
                 }
             }
             //activeLock.ReleaseMutex();
@@ -218,37 +241,57 @@ namespace EnemyCount
 
             if (logStart)
             {
-                new Label()
-                {
-                    Text = "logStart",
-                    AutoSizeWidth = true,
-                    Parent = cc.fp,
-                };
+                //new Label()
+                //{
+                //    Text = "logStart",
+                //    AutoSizeWidth = true,
+                //    Parent = cc.fp,
+                //};
                 Logger.Debug("logStart");
                 logStart = false;
             }
             if (logEnd)
             {
-                new Label()
-                {
-                    Text = "logEnd",
-                    AutoSizeWidth = true,
-                    Parent = cc.fp,
-                };
+                //new Label()
+                //{
+                //    Text = "logEnd",
+                //    AutoSizeWidth = true,
+                //    Parent = cc.fp,
+                //};
+
                 Logger.Debug("logEnd");
                 logEnd = false;
+                logEnded = true;
             }
 
             //activeLock.WaitOne();
             var tmpLatestDict = latest;
-            foreach (var value in tmpLatestDict.Values)
+            foreach (var kv in tmpLatestDict)
             {
-                if (!display.ContainsKey(value.Id))
+                var value = kv.Value;
+                if (!display.ContainsKey(kv.Key) && value.ag.Team != 2763)
                 {
-                    var x = value.Team + ":" + ClassLookup.Table(value.Profession, value.Elite) + "-" + +value.Id;
-                    if (value.Name != "")
+                    if (logEnded)
                     {
-                        x += " (" + value.Name + ")";
+                        new Label()
+                        {
+                            Text = "_______",
+                            AutoSizeWidth = true,
+                            Parent = cc.fp,
+                        };
+                        logEnded = false;
+                        Logger.Debug(JsonSerializer.Serialize(latest));
+                    }
+                    var x = value.ag.Team +
+                        ":" + ClassLookup.Table(value.ag.Profession, value.ag.Elite) +
+                        "-" + +value.ag.Id +
+                        //"-" + value.ev.SrcAgent + 
+                        "-" + value.ev.SrcInstId +
+                        //"-" + value.ev.DstAgent + 
+                        "-" + value.ev.DstInstId;
+                    if (value.ag.Name != "")
+                    {
+                        x += " (" + value.ag.Name + ")";
                     }
                     new Label()
                     {
@@ -257,7 +300,7 @@ namespace EnemyCount
                         Parent = cc.fp,
                     };
                     Logger.Debug(x);
-                    display.Add(value.Id, value);
+                    display.Add(kv.Key, value);
                 }
             }
             //activeLock.ReleaseMutex();

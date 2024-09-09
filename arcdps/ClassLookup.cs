@@ -34,6 +34,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Guardian",
                 27 => "Dragonhunter",
                 62 => "Firebrand",
                 65 => "Willbender",
@@ -45,6 +46,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Warrior",
                 18 => "Berserker",
                 61 => "Spellbreaker",
                 68 => "Bladesworn",
@@ -56,6 +58,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Engineer",
                 43 => "Scrapper",
                 57 => "Holosmith",
                 70 => "Mechanist",
@@ -67,6 +70,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Ranger",
                 5 => "Druid",
                 55 => "Soulbeast",
                 72 => "Untamed",
@@ -78,6 +82,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Thief",
                 7 => "Daredevil",
                 58 => "Deadeye",
                 71 => "Specter",
@@ -89,6 +94,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Elementalist",
                 48 => "Tempest",
                 56 => "Weaver",
                 67 => "Catalyst",
@@ -100,6 +106,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Mesmer",
                 40 => "Chronomancer",
                 59 => "Mirage",
                 66 => "Virtuoso",
@@ -111,6 +118,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Necromancer",
                 34 => "Reaper",
                 60 => "Scourge",
                 64 => "Harbinger",
@@ -122,6 +130,7 @@ namespace EnemyCount.arcdps
         {
             return elite switch
             {
+                0 => "Revenant",
                 52 => "Herald",
                 63 => "Renegade",
                 69 => "Vindicator",
