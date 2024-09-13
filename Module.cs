@@ -17,6 +17,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -56,10 +57,10 @@ namespace EnemyCount
         private Dictionary<string, blar> display = new Dictionary<string, blar>();
         private ConcurrentDictionary<string, blar> latest = new ConcurrentDictionary<string, blar>();
 
-        struct blar
+        public struct blar
         {
-            public Ag ag;
-            public Ev ev;
+            public Ag ag { get; set; }
+            public RawCombatEventArgs args { get; set; }
         }
 
         CountWindow.CountContainer cc;
@@ -71,9 +72,10 @@ namespace EnemyCount
         volatile bool logEnded = false;
         int startctr = 0;
 
+        StreamWriter logFileWriter;
+
         Label statusLabel;
 
-        bool shown = false;
         CornerIcon ci;
 
         volatile SocketError se = SocketError.Success;
@@ -115,6 +117,8 @@ namespace EnemyCount
 
         private void handleArcDpsEvents(object sender, RawCombatEventArgs args)
         {
+            logFileWriter.WriteLine(JsonSerializer.Serialize(args));
+
             if (args.CombatEvent.Ev == null)
             {
                 return;
@@ -148,6 +152,7 @@ namespace EnemyCount
                         latest.TryAdd(x.Key, x.Value);
                     }
                     logEnd = true;
+                    logFileWriter.Flush();
                 }
                 // TODO: update the sessions dictionary from the active one
             }
@@ -158,7 +163,7 @@ namespace EnemyCount
                 var key = args.CombatEvent.Src.Team + "." + args.CombatEvent.Ev.SrcInstId;
                 if (!active.ContainsKey(key))
                 {
-                    active.Add(key, new blar() { ag = args.CombatEvent.Src, ev = args.CombatEvent.Ev });
+                    active.Add(key, new blar() { ag = args.CombatEvent.Src, args = args });
                 }
             }
 
@@ -167,7 +172,7 @@ namespace EnemyCount
                 var key = args.CombatEvent.Dst.Team + "." + args.CombatEvent.Ev.DstInstId;
                 if (!active.ContainsKey(key))
                 {
-                    active.Add(key, new blar() { ag = args.CombatEvent.Dst, ev = args.CombatEvent.Ev });
+                    active.Add(key, new blar() { ag = args.CombatEvent.Dst, args = args });
                 }
             }
             //activeLock.ReleaseMutex();
@@ -180,6 +185,8 @@ namespace EnemyCount
 
         protected override async Task LoadAsync()
         {
+            logFileWriter = File.AppendText("C:\\temp\\enemyCount.log");
+
             ArcDpsService.ArcDps.RawCombatEvent += handleArcDpsEvents;
             ArcDpsService.ArcDps.Error += handleArcDpsErrors;
 
@@ -286,9 +293,9 @@ namespace EnemyCount
                         ":" + ClassLookup.Table(value.ag.Profession, value.ag.Elite) +
                         "-" + +value.ag.Id +
                         //"-" + value.ev.SrcAgent + 
-                        "-" + value.ev.SrcInstId +
+                        "-" + value.args.CombatEvent.Ev.SrcInstId +
                         //"-" + value.ev.DstAgent + 
-                        "-" + value.ev.DstInstId;
+                        "-" + value.args.CombatEvent.Ev.DstInstId;
                     if (value.ag.Name != "")
                     {
                         x += " (" + value.ag.Name + ")";
