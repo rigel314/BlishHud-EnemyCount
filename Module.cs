@@ -132,6 +132,7 @@ namespace EnemyCount
                     active = new Dictionary<string, blar>();
                     //reset = true;
                     latest.Clear();
+                    Logger.Debug("logStart-" + args.CombatEvent.Ev.Value);
                     logStart = true;
                 }
                 startctr++;
@@ -151,6 +152,7 @@ namespace EnemyCount
                     {
                         latest.TryAdd(x.Key, x.Value);
                     }
+                    Logger.Debug("logEnd-" + args.CombatEvent.Ev.Value);
                     logEnd = true;
                     //logFileWriter.Flush();
                 }
@@ -161,6 +163,10 @@ namespace EnemyCount
             if (args.CombatEvent.Src != null && args.CombatEvent.Src.Elite != 0xffffffff && args.CombatEvent.Src.Profession != 0)
             {
                 var key = args.CombatEvent.Src.Team + "." + args.CombatEvent.Ev.SrcInstId;
+                if (args.CombatEvent.Ev.SrcInstId == 65535)
+                {
+                    key += "." + args.CombatEvent.Src.Id + "." + args.CombatEvent.Src.Profession + "." + args.CombatEvent.Src.Elite;
+                }
                 if (!active.ContainsKey(key))
                 {
                     active.Add(key, new blar() { ag = args.CombatEvent.Src, args = args });
@@ -170,6 +176,10 @@ namespace EnemyCount
             if (args.CombatEvent.Dst != null && args.CombatEvent.Dst.Elite != 0xffffffff && args.CombatEvent.Dst.Profession != 0)
             {
                 var key = args.CombatEvent.Dst.Team + "." + args.CombatEvent.Ev.DstInstId;
+                if (args.CombatEvent.Ev.DstInstId == 65535)
+                {
+                    key += "." + args.CombatEvent.Dst.Id + "." + args.CombatEvent.Dst.Profession + "." + args.CombatEvent.Dst.Elite;
+                }
                 if (!active.ContainsKey(key))
                 {
                     active.Add(key, new blar() { ag = args.CombatEvent.Dst, args = args });
