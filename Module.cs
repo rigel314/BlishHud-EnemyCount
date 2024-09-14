@@ -72,7 +72,7 @@ namespace EnemyCount
         volatile bool logEnded = false;
         int startctr = 0;
 
-        StreamWriter logFileWriter;
+        //StreamWriter logFileWriter;
 
         Label statusLabel;
 
@@ -117,7 +117,7 @@ namespace EnemyCount
 
         private void handleArcDpsEvents(object sender, RawCombatEventArgs args)
         {
-            logFileWriter.WriteLine(JsonSerializer.Serialize(args));
+            //logFileWriter.WriteLine(JsonSerializer.Serialize(args));
 
             if (args.CombatEvent.Ev == null)
             {
@@ -152,7 +152,7 @@ namespace EnemyCount
                         latest.TryAdd(x.Key, x.Value);
                     }
                     logEnd = true;
-                    logFileWriter.Flush();
+                    //logFileWriter.Flush();
                 }
                 // TODO: update the sessions dictionary from the active one
             }
@@ -185,7 +185,7 @@ namespace EnemyCount
 
         protected override async Task LoadAsync()
         {
-            logFileWriter = File.AppendText("C:\\temp\\enemyCount.log");
+            //logFileWriter = File.AppendText("C:\\temp\\enemyCount.log");
 
             ArcDpsService.ArcDps.RawCombatEvent += handleArcDpsEvents;
             ArcDpsService.ArcDps.Error += handleArcDpsErrors;
